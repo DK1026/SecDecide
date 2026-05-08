@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>秒決 SecDecide - 選擇困難終結工具</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Confetti 特效庫 -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+HK:wght@400;700;900&display=swap');
+    
+    body {
+      font-family: 'Noto Sans HK', sans-serif;
+      /* 活潑的漸變背景 */
+      background: linear-gradient(135deg, #FF9A9E 0%, #FECFEF 99%, #FECFEF 100%);
+      background-size: 400% 400%;
+      animation: gradientBG 15s ease infinite;
+      min-height: 100vh;
+    }
+
+    @keyframes gradientBG {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    /* 果凍彈跳動畫 */
+    .bouncy-enter {
+      animation: bouncy 0.6s cubic-bezier(0.68, -0.55, 0.26, 1.55) forwards;
+    }
+
+    @keyframes bouncy {
+      0% { transform: scale(0.8); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    /* 按鈕點擊特效 */
+    .btn-press:active {
+      transform: scale(0.92);
+    }
+
+    /* 平滑過渡 */
+    .transition-height {
+      transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out;
+    }
+
+    /* 隱藏滾動條但保留功能 */
+    ::-webkit-scrollbar { width: 0px; background: transparent; }
+  </style>
+</head>
+<body class="flex flex-col items-center justify-center p-4 antialiased selection:bg-pink-300 selection:text-white">
+
+  <!-- 主卡片 -->
+  <div class="w-full max-w-md bg-white/90 backdrop-blur-xl border-4 border-white rounded-3xl shadow-[0_20px_50px_-12px_rgba(255,105,180,0.4)] p-6 space-y-6 bouncy-enter relative flex flex-col justify-center min-h-[400px]">
+    
+    <!-- Header -->
+    <div id="header-area" class="text-center space-y-1 transition-all duration-300">
+      <h1 class="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-violet-500 flex items-center justify-center gap-2 tracking-tight">
+        ✨ 秒決 SecDecide ✨
+      </h1>
+      <p class="text-slate-500 font-bold text-sm bg-slate-100 inline-block px-3 py-1 rounded-full mt-2">
+        1秒破除選擇困難症 🤯
+      </p>
+    </div>
+
+    <!-- 錯誤提示區 -->
+    <div id="error-box" class="hidden items-center gap-2 text-rose-500 text-sm bg-rose-50 p-3 rounded-xl border border-rose-100 font-bold">
+      <span class="text-lg" id="error-emoji">🚨</span>
+      <span id="error-text">錯誤訊息</span>
+    </div>
+
+    <!-- 輸入區塊 (產出結果時會隱藏) -->
+    <div id="input-container" class="space-y-4 transition-all duration-300 opacity-100 max-h-[500px] overflow-hidden">
+      <!-- 輸入區 -->
+      <div class="relative group">
+        <textarea
+          id="input-text"
+          placeholder="打字或講嘢...&#10;👉 買唔買？&#10;👉 帶飯定出街食？&#10;👉 包剪揼"
+          class="w-full h-32 bg-slate-50 border-2 border-pink-200 rounded-2xl p-4 pr-14 text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-pink-300/50 focus:border-pink-400 transition-all resize-none text-lg font-bold shadow-inner"
+        ></textarea>
+        
+        <!-- 語音按鈕 -->
+        <button
+          id="mic-btn"
+          class="absolute bottom-4 right-4 w-10 h-10 flex items-center justify-center rounded-full bg-violet-100 text-violet-500 hover:bg-violet-500 hover:text-white transition-all btn-press shadow-sm"
+          title="語音輸入"
+        >
+          <svg id="mic-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+        </button>
+      </div>
+      
+      <!-- 快捷標籤 -->
+      <div class="flex flex-wrap gap-2">
+        <button onclick="setTemplate('公 字')" class="text-xs font-bold text-amber-600 bg-amber-100 hover:bg-amber-200 px-3 py-2 rounded-full transition-colors btn-press">🪙 抽公字</button>
+        <button onclick="setTemplate('包剪揼')" class="text-xs font-bold text-orange-600 bg-orange-100 hover:bg-orange-200 px-3 py-2 rounded-full transition-colors btn-press">✌️ 包剪揼</button>
+        <button onclick="setTemplate('1至6')" class="text-xs font-bold text-emerald-600 bg-emerald-100 hover:bg-emerald-200 px-3 py-2 rounded-full transition-colors btn-press">🎲 擲骰 (1-6)</button>
+        <button onclick="setTemplate('紅橙黃綠青藍紫')" class="text-xs font-bold text-rose-600 bg-rose-100 hover:bg-rose-200 px-3 py-2 rounded-full transition-colors btn-press">🌈 抽顏色</button>
+        <button onclick="setTemplate('A至Z')" class="text-xs font-bold text-violet-600 bg-violet-100 hover:bg-violet-200 px-3 py-2 rounded-full transition-colors btn-press">🔠 A至Z</button>
+        <button onclick="setTemplate('買唔買？')" class="text-xs font-bold text-pink-600 bg-pink-100 hover:bg-pink-200 px-3 py-2 rounded-full transition-colors btn-press">🛍️ 買定唔買</button>
+        <button onclick="setTemplate('帶飯定出街食？')" class="text-xs font-bold text-amber-600 bg-amber-100 hover:bg-amber-200 px-3 py-2 rounded-full transition-colors btn-press">🍱 食晏抉擇</button>
+        <button onclick="setTemplate('做Gym定偷懶？')" class="text-xs font-bold text-emerald-600 bg-emerald-100 hover:bg-emerald-200 px-3 py-2 rounded-full transition-colors btn-press">🏋️ 運動抉擇</button>
+      </div>
+
+      <!-- 核心按鈕 (首頁顯示) -->
+      <button
+        onclick="handlePick()"
+        class="w-full py-4 rounded-2xl font-black text-2xl text-white bg-gradient-to-r from-pink-500 to-violet-500 hover:from-pink-400 hover:to-violet-400 shadow-[0_10px_20px_-10px_rgba(236,72,153,0.8)] transition-all btn-press flex items-center justify-center gap-2 group"
+      >
+        <span class="group-hover:animate-spin">🎲</span>
+        即刻秒決
+      </button>
+    </div>
+
+    <!-- 結果區 (預設隱藏) -->
+    <div id="result-area" class="hidden flex-col items-center justify-center space-y-6 transition-all duration-300">
+      <div class="inline-block bg-slate-100 text-slate-500 text-sm font-bold px-4 py-2 rounded-full">
+        天意從 <span id="count-display" class="text-pink-500">0</span> 個選項中揀咗：
+      </div>
+      
+      <div id="result-text" class="text-6xl md:text-7xl font-black text-slate-800 break-words py-4 text-center leading-tight">
+        <!-- 結果插入處 -->
+      </div>
+      
+      <div class="flex flex-col w-full gap-3 mt-4">
+        <!-- 再抽一次 (使用相同選項) -->
+        <button
+          onclick="rePick()"
+          class="w-full py-4 rounded-2xl font-black text-xl text-white bg-gradient-to-r from-pink-500 to-violet-500 shadow-[0_10px_20px_-10px_rgba(236,72,153,0.8)] transition-all btn-press flex items-center justify-center gap-2"
+        >
+          <span>🎲</span> 再抽一次
+        </button>
+        
+        <!-- 重新輸入 (返回首頁) -->
+        <button
+          onclick="handleReset()"
+          class="w-full py-3 rounded-xl font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 transition-colors btn-press flex items-center justify-center gap-2"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+          重新輸入
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 正式免責聲明 -->
+  <div class="w-full max-w-md mt-6 px-4">
+    <div class="bg-white/60 backdrop-blur-md rounded-2xl p-4 text-xs text-slate-600 leading-relaxed border-2 border-white shadow-sm font-medium">
+      <div class="flex items-center gap-1.5 mb-2 font-bold text-slate-700">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2-1 4-3 5.99-5.11a2 2 0 0 1 2.72-.08C15.2 2.3 17 4.3 19 5.2a1 1 0 0 1 .98.98Z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+        免責聲明 (Disclaimer)
+      </div>
+      <p class="mb-1">
+        1. <strong>演算機制：</strong>本應用程式產生之結果由使用者端 (Client-side) 之標準偽隨機數生成器即時演算，<strong>無AI預測、大數據分析或玄學運算。</strong>
+      </p>
+      <p>
+        2. <strong>使用限制：</strong>本工具僅供娛樂。<strong>嚴禁</strong>作為醫療、財務投資或重大決策依據。開發者對使用後果概不承擔法律責任。
+      </p>
+    </div>
+  </div>
+
+  <script>
+    const inputEl = document.getElementById('input-text');
+    const inputContainer = document.getElementById('input-container');
+    const headerArea = document.getElementById('header-area');
+    const resultArea = document.getElementById('result-area');
+    const resultText = document.getElementById('result-text');
+    const countDisplay = document.getElementById('count-display');
+    const errorBox = document.getElementById('error-box');
+    const errorText = document.getElementById('error-text');
+    const errorEmoji = document.getElementById('error-emoji');
+    const micBtn = document.getElementById('mic-btn');
+    
+    let isListening = false;
+    let recognition = null;
+    let currentOptions = []; 
+
+    window.onload = () => inputEl.focus();
+
+    function setTemplate(text) {
+      inputEl.value = text;
+      inputEl.focus();
+      hideError();
+    }
+
+    function showError(msg, emoji = '🚨') {
+      errorText.innerText = msg;
+      errorEmoji.innerText = emoji;
+      errorBox.classList.remove('hidden');
+      errorBox.classList.add('flex');
+    }
+
+    function hideError() {
+      errorBox.classList.add('hidden');
+      errorBox.classList.remove('flex');
+    }
+
+    // 語音輸入邏輯
+    micBtn.addEventListener('click', () => {
+      hideError();
+      if (isListening) {
+        recognition?.stop();
+        return;
+      }
+
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) return showError('哎呀！你個瀏覽器聽唔明人話，自己打字啦乖！ ⌨️', '🤖');
+
+      try {
+        recognition = new SpeechRecognition();
+        recognition.lang = 'zh-HK';
+        recognition.continuous = false;
+        recognition.interimResults = false;
+
+        recognition.onstart = () => {
+          isListening = true;
+          micBtn.classList.add('bg-rose-500', 'text-white', 'animate-pulse');
+          micBtn.classList.remove('bg-violet-100', 'text-violet-500');
+        };
+
+        recognition.onresult = (event) => {
+          inputEl.value += (inputEl.value.trim() === '' ? '' : ' ') + event.results[0][0].transcript;
+        };
+
+        recognition.onerror = (event) => {
+          isListening = false;
+          resetMicUI();
+          if (event.error === 'aborted') return;
+          if (event.error == 'not-allowed' || event.error == '13') {
+            showError('喂！收音咪畀人封印咗 (權限問題/Error 13) 🎤🚫，用住手指打字先啦！', '🤐');
+          } else {
+            showError(`聽得唔係幾清楚喎... 系統話: ${event.error}`, '🙉');
+          }
+        };
+
+        recognition.onend = () => {
+          isListening = false;
+          resetMicUI();
+        };
+
+        recognition.start();
+      } catch (err) {
+        showError(`啟動錄音失敗: ${err.message}`, '💥');
+        resetMicUI();
+      }
+    });
+
+    function resetMicUI() {
+      micBtn.classList.remove('bg-rose-500', 'text-white', 'animate-pulse');
+      micBtn.classList.add('bg-violet-100', 'text-violet-500');
+    }
+
+    // NLP 解析邏輯
+    function parseInput(text) {
+      const trimmed = text.trim();
+      if (!trimmed) return [];
+
+      // 降噪過濾：移除結尾助詞及常見提問尾綴
+      const cleanText = trimmed
+        .replace(/[?？呀啊喇啦呢咩喎]+$/, '')
+        .replace(/(揀邊個好|邊個好|揀咩好|揀邊樣)$/, '');
+
+      // 1. 強化版 A唔A / 前綴+A唔A+後綴
+      const aNotAMatch = cleanText.match(/^(.*?)(.+?)唔\2(.*)$/);
+      if (aNotAMatch) {
+        return [
+          aNotAMatch[2] + aNotAMatch[3], 
+          '唔' + aNotAMatch[2] + aNotAMatch[3]
+        ];
+      }
+
+      // 2. 數字範圍 (1-100)
+      const rangeMatch = trimmed.match(/(\d+)\s*(至|到|-|to)\s*(\d+)/i);
+      if (rangeMatch) {
+        const start = parseInt(rangeMatch[1], 10), end = parseInt(rangeMatch[3], 10);
+        if (!isNaN(start) && !isNaN(end) && Math.abs(start - end) <= 1000) {
+          const min = Math.min(start, end), max = Math.max(start, end);
+          return Array.from({ length: max - min + 1 }, (_, i) => (min + i).toString());
+        }
+      }
+
+      // 3. 英文字母範圍 (A-Z, a-z)
+      const alphaRangeMatch = cleanText.match(/([a-zA-Z])\s*(至|到|-|to)\s*([a-zA-Z])/);
+      if (alphaRangeMatch) {
+        const startCode = alphaRangeMatch[1].charCodeAt(0);
+        const endCode = alphaRangeMatch[3].charCodeAt(0);
+        
+        const isUpper = startCode >= 65 && startCode <= 90 && endCode >= 65 && endCode <= 90;
+        const isLower = startCode >= 97 && startCode <= 122 && endCode >= 97 && endCode <= 122;
+        
+        if (isUpper || isLower) {
+          const min = Math.min(startCode, endCode), max = Math.max(startCode, endCode);
+          return Array.from({ length: max - min + 1 }, (_, i) => String.fromCharCode(min + i));
+        }
+      }
+
+      // 4. 中文數字範圍 (一至五)
+      const chiNumMap = { '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9, '十': 10 };
+      const chiRangeMatch = trimmed.match(/([一二三四五六七八九十])\s*(至|到)\s*([一二三四五六七八九十])/);
+      if (chiRangeMatch) {
+        const start = chiNumMap[chiRangeMatch[1]], end = chiNumMap[chiRangeMatch[3]];
+        if (start && end) {
+          const min = Math.min(start, end), max = Math.max(start, end);
+          return Array.from({ length: max - min + 1 }, (_, i) => (min + i).toString());
+        }
+      }
+
+      // 5. 定 / or / 還是 / 又想...又想 / 同埋
+      if (cleanText.includes('定') || cleanText.includes('還是') || /\bor\b/i.test(cleanText) || cleanText.includes('又') || cleanText.includes('同埋')) {
+        return cleanText.split(/\s*還是\s*|\s+\bor\b\s+|\s*定\s*|\s*又想\s*|\s*又\s*|\s*同埋\s*/i)
+          .map(opt => opt.replace(/^[，、,\s]+|[，、,\s]+$/g, '')) 
+          .filter(opt => opt !== '');
+      }
+      
+      // 6. 連續單字群組 (無分隔符自動拆開)
+      const presetLists = [
+        "紅橙黃綠青藍紫", 
+        "包剪揼",
+        "黑白灰",
+        "金銀銅"
+      ];
+      if (presetLists.includes(cleanText)) {
+        return cleanText.split('');
+      }
+
+      // 7. 是非題 Fallback
+      if (trimmed.endsWith('?') || trimmed.endsWith('？')) {
+        const basicSplit = cleanText.split(/[\n,，、\s]+/);
+        return (basicSplit.length >= 2 && basicSplit.every(opt => opt.trim() !== '')) ? basicSplit : ['係 (Yes)', '唔係 (No)'];
+      }
+
+      // 8. 基礎分隔符
+      return trimmed.split(/[\n,，、\s]+/).filter(opt => opt.trim() !== '');
+    }
+
+    // 執行選擇
+    function handlePick() {
+      hideError();
+      const val = inputEl.value;
+      if (!val.trim()) {
+        showError('大佬呀，空氣係冇得揀㗎！打幾個字先啦喂！ 🌬️', '👻');
+        return;
+      }
+
+      const validOptions = parseInput(val);
+
+      if (validOptions.length < 2) {
+        // 智能防呆：偵測字串過長且無分隔符
+        if (val.length > 8 && !/[\s,，、定或]/.test(val)) {
+          showError('大佬，成句黐埋一齊我拆唔到呀！😵‍💫 試吓加「空格」或「逗號」隔開，例如：「豆腐火腩飯 空格 楊州炒飯」。', '📝');
+        } else {
+          showError('俾幾個選項我（例如：M記定KFC、壽司定Pizza），我先幫到你秒決㗎！🔮', '🍔');
+        }
+        resultArea.classList.add('hidden');
+        return;
+      }
+
+      currentOptions = validOptions;
+
+      const randomIndex = Math.floor(Math.random() * currentOptions.length);
+      displayResult(currentOptions[randomIndex], currentOptions.length);
+    }
+
+    function displayResult(resultTextStr, optionsLength) {
+      inputContainer.classList.add('opacity-0', 'max-h-0');
+      inputContainer.classList.remove('opacity-100', 'max-h-[500px]');
+      
+      headerArea.classList.add('scale-90', 'opacity-70');
+      
+      countDisplay.innerText = optionsLength;
+      resultText.innerText = resultTextStr;
+      
+      setTimeout(() => {
+        inputContainer.style.display = 'none';
+        resultArea.classList.remove('hidden');
+        resultArea.classList.add('flex');
+        
+        resultText.classList.remove('bouncy-enter');
+        void resultText.offsetWidth; 
+        resultText.classList.add('bouncy-enter');
+
+        confetti({
+          particleCount: 100,
+          spread: 70,
+          origin: { y: 0.5 },
+          colors: ['#FF9A9E', '#FECFEF', '#A78BFA', '#FBBF24'],
+          zIndex: 100
+        });
+      }, 300); 
+    }
+
+    // 點擊「再抽一次」
+    function rePick() {
+      if (currentOptions.length < 2) return;
+      
+      resultText.classList.add('blur-sm', 'scale-95');
+      
+      setTimeout(() => {
+        const randomIndex = Math.floor(Math.random() * currentOptions.length);
+        resultText.innerText = currentOptions[randomIndex];
+        resultText.classList.remove('blur-sm', 'scale-95');
+        
+        resultText.classList.remove('bouncy-enter');
+        void resultText.offsetWidth; 
+        resultText.classList.add('bouncy-enter');
+        
+        confetti({
+          particleCount: 60,
+          spread: 50,
+          origin: { y: 0.5 },
+          colors: ['#3b82f6', '#8b5cf6'],
+          zIndex: 100
+        });
+      }, 200);
+    }
+
+    // 點擊「重新輸入」
+    function handleReset() {
+      resultArea.classList.add('hidden');
+      resultArea.classList.remove('flex');
+      
+      inputContainer.style.display = 'block';
+      setTimeout(() => {
+        inputContainer.classList.remove('opacity-0', 'max-h-0');
+        inputContainer.classList.add('opacity-100', 'max-h-[500px]');
+        headerArea.classList.remove('scale-90', 'opacity-70');
+        inputEl.value = '';
+        currentOptions = [];
+        hideError();
+        inputEl.focus();
+      }, 10);
+    }
+
+    // 監聽 Enter 鍵
+    inputEl.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        if (!inputContainer.classList.contains('opacity-0')) {
+          handlePick();
+        }
+      }
+    });
+  </script>
+</body>
+</html>
